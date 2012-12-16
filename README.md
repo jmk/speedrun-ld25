@@ -2,6 +2,8 @@
 
 Theme: You Are The Villain
 
+**[Download .love archive](https://www.dropbox.com/s/86sxtydu3kys68c/ld25.love?m)** (requires [Love2D](http://www.love2d.org))
+
 This is my first Ludum Dare entry, and it was a blast! Regrettably, I couldn't commit the entire 48 hours to the challenge, so here's my (mostly) complete game.
 
 More details to follow.

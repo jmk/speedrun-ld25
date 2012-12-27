@@ -124,6 +124,7 @@ local _numberFont = love.graphics.newImageFont(
     loadImage("numberFont.png"), "1234567890.:")
 
 local _gameOverImage = loadImage("gameover.png")
+local _attractModeImage = loadImage("attractMode.png")
 
 local _explosions = {}
 
@@ -157,11 +158,12 @@ _sounds.brokenEngine3:setLooping(true)
 -- Functions
 --
 
-function reset()
+function reset(firstTime)
     _alive = true
     _elapsed = 0
     _dramaticPause = _dramaticPauseTime
     _gameOver = false
+    _attractMode = false
 
     _copSpeed = 0.1
     _copSpeedCurrent = _copSpeed
@@ -169,7 +171,7 @@ function reset()
 
     _speed = 0.2
     _damage = 0
-    _accel = 0.0
+    _accel = 0.3
     _turnAccel = 0.0
     _pos = 0.0
 
@@ -181,6 +183,10 @@ function reset()
         table.insert(_lanes, {})
     end
 
+    _cops.alive = true
+    _cops.visible = true
+
+    _player.alive = true
     _player.visible = true
 
     _player.smoke1:stop()
@@ -192,6 +198,26 @@ function reset()
 
     _engineSound = _sounds.engine
     _engineSound:play()
+
+    if (firstTime) then
+        -- XXX hacky setup for title screen
+        _alive = false
+        _gameOver = true
+        _attractMode = true
+
+        _cops.alive = false
+        _cops.visible = false
+
+        _player.alive = false
+        _player.visible = false
+
+        _engineSound:stop()
+
+        -- Spawn a few cars in random locations
+        for x = 1, 10 do
+            spawnCar(true)
+        end
+    end
 end
 
 function die()
@@ -409,12 +435,11 @@ function checkCollisions()
     local bottom = _roadOffset + _roadHeight - _laneHeight
 
     for _, lane in pairs(_lanes) do
-        for _, c in pairs(lane) do
+        for i, c in pairs(lane) do
             if (c.alive and _player:hitGob(c)) then
                 c.alive = false
 
                 if (_alive) then
-                    -- Death sequence
                     _sounds.crash:play()
                 end
 
@@ -460,30 +485,44 @@ function checkCollisions()
                 end
             end
 
-            if (c.x <= _cops:getWorldSpaceBbox().br_x) then
-                c.alive = false
-            end
+            if (_attractMode) then
+                -- Special case for intro; quietly remove when offscreen
+                if (c.x + c:getWidth() < 0) then
+                    table.remove(lane, i)
+                end
+            else
+                if (c.x <= _cops:getWorldSpaceBbox().br_x) then
+                    -- Car intersected with police line
+                    c.alive = false
+                end
 
-            if (not c.alive and c.visible) then
-                if (c.y < top or c.y > bottom
-                    or c.x <= _cops:getWorldSpaceBbox().br_x) then
-                    -- Explosions!
-                    boom()
+                if (not c.alive and c.visible) then
+                    if (c.y < top or c.y > bottom
+                        or c.x <= _cops:getWorldSpaceBbox().br_x) then
+                        -- Explosions!
+                        boom()
 
-                    for i = 1, math.random(8, 10) do
-                        spawnExplosion(c.x, c.y, c:getWidth(), c:getHeight())
+                        for i = 1, math.random(8, 10) do
+                            spawnExplosion(c.x, c.y, c:getWidth(), c:getHeight())
+                        end
+
+                        c.visible = false
+                        table.remove(lane, i)
                     end
-                    c.visible = false
                 end
             end
         end
     end
 end
 
-function spawnCar()
+function spawnCar(randomX)
     local x = _width
-    local lane = math.random(1, _laneCount)
-    local y = (lane - 1) * _laneHeight + _roadOffset
+    local laneIndex = math.random(1, _laneCount)
+    local y = (laneIndex - 1) * _laneHeight + _roadOffset
+
+    if (randomX) then
+        x = math.random(_width)
+    end
 
     y = y + 2 - _perspOffset -- fudge
 
@@ -494,7 +533,23 @@ function spawnCar()
         speed = -_carSpeedBase
     })
 
-    table.insert(_lanes[lane], c)
+    -- Make sure it doesn't overlap with another car in the same lane
+    local lane = _lanes[laneIndex]
+
+    local pad = 5
+    local xMin = x - pad
+    local xMax = x + c:getWidth() + pad
+
+    for _, otherCar in pairs(lane) do
+        if (xMax > otherCar.x
+            and xMin < otherCar.x + otherCar:getWidth()) then
+            -- Overlap detected; bail
+            -- XXX might be better to try and find another lane
+            return
+        end
+    end
+
+    table.insert(lane, c)
 end
 
 function spawnExplosion(x, y, w, h)
@@ -595,15 +650,25 @@ function drawOverlay()
     end
 
     -- Time overlay
+    if (not _attractMode) then
 --    local x = (_width - _numberFont:getWidth(str)) / 2
-    local x = 160
-    love.graphics.print(str, x, 10)
+        local x = 160
+        love.graphics.print(str, x, 10)
+    end
+
+    function drawCentered(img)
+        local x = (_width - img:getWidth()) / 2
+        local y = (_height - img:getHeight()) / 2
+        love.graphics.draw(img, x, y)
+    end
 
     -- Game over?
     if (_gameOver) then
-        local x = (_width - _gameOverImage:getWidth()) / 2
-        local y = (_height - _gameOverImage:getHeight()) / 2
-        love.graphics.draw(_gameOverImage, x, y)
+        if (_attractMode) then
+            drawCentered(_attractModeImage)
+        else
+            drawCentered(_gameOverImage)
+        end
     end
 
     love.graphics.pop()
@@ -620,7 +685,8 @@ end
 --
 
 function love.load()
-    reset()
+    -- Initialize for first-time startup
+    reset(true)
 
     -- Graphics setup
     love.graphics.setFont(love.graphics.newImageFont(
@@ -690,6 +756,8 @@ function love.update(dt)
 
             _player.smoke1:stop()
             _player.smoke2:stop()
+
+            _player.alive = false
             _player.visible = false
 
             for i = 1, math.random(15, 20) do

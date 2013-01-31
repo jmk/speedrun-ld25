@@ -63,11 +63,11 @@ function Gob:drawHitbox()
 end
 
 function Gob:getWidth()
-    return self.sprite.image:getWidth()
+    return self.sprite:getWidth()
 end
 
 function Gob:getHeight()
-    return self.sprite.image:getHeight()
+    return self.sprite:getHeight()
 end
 
 function Gob:update(dt)

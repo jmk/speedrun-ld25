@@ -52,3 +52,21 @@ function Sprite:newAnim(imageName, numFrames, data)
 
     return s
 end
+
+function Sprite:getWidth()
+    if (not self.image) then
+        return 0
+    end
+
+    local count = 1
+
+    if (self.anim) then
+        count = self.anim.count
+    end
+
+    return self.image:getWidth() / count
+end
+
+function Sprite:getHeight()
+    return self.image:getHeight()
+end

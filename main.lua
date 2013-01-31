@@ -62,7 +62,7 @@ end
 
 local _sprites = {
     -- Gameplay
-    player = Sprite:new("player.png", {
+    player = Sprite:newAnim("player.png", 11, {
         hitbox = makeHitbox(32),
         center = { x = 0, y = -3 },
     }),
@@ -70,7 +70,7 @@ local _sprites = {
     -- Background
     bg = Sprite:new("bg.png"),
     fg = Sprite:new("fg.png"),
-    cop = Sprite:new("cop.png", {
+    cop = Sprite:newAnim("cop.png", 4, {
         hitbox = { x = 0, y = _perspOffset, w = 32, h = 120 },
     }),
 
@@ -110,13 +110,24 @@ local _player = Gob:new({
     x = 0,
     y = 0,
     sprite = _sprites.player,
+    fps = 20,
     smoke1 = love.graphics.newParticleSystem(_sprites.smoke.image, 50),
     smoke2 = love.graphics.newParticleSystem(_sprites.smoke.image, 20),
 })
 
-local _cops = Gob:new({
-    sprite = _sprites.cop
-})
+local _cops = {}
+for i = 1, _laneCount do
+    local y = _roadOffset - _perspOffset + 2 -- fudge
+    y = y + (i - 1) * _laneHeight
+
+    local cop = Gob:new({
+        sprite = _sprites.cop,
+        fps = 15,
+        time = randf(0.0, 1.0),
+        y = y
+    })
+    table.insert(_cops, cop)
+end
 
 local _lanes = {}
 
@@ -183,8 +194,10 @@ function reset(firstTime)
         table.insert(_lanes, {})
     end
 
-    _cops.alive = true
-    _cops.visible = true
+    for _, cop in pairs(_cops) do
+        cop.alive = true
+        cop.visible = true
+    end
 
     _player.alive = true
     _player.visible = true
@@ -199,14 +212,20 @@ function reset(firstTime)
     _engineSound = _sounds.engine
     _engineSound:play()
 
+    for k,v in pairs(_explosions) do
+        _explosions[k] = nil
+    end
+
     if (firstTime) then
         -- XXX hacky setup for title screen
         _alive = false
         _gameOver = true
         _attractMode = true
 
-        _cops.alive = false
-        _cops.visible = false
+        for _, cop in pairs(_cops) do
+            cop.alive = false
+            cop.visible = false
+        end
 
         _player.alive = false
         _player.visible = false
@@ -388,8 +407,11 @@ function updateCars(dt)
 end
 
 function updateCops(dt)
-    _cops.x = _copSpeedCurrent * _width - 32
-    _cops.y = _roadOffset - _perspOffset
+    for i, cop in pairs(_cops) do
+        cop:update(dt)
+
+        cop.x = _copSpeedCurrent * _width - 32
+    end
 end
 
 function updateExplosions(dt)
@@ -407,6 +429,7 @@ function updateExplosions(dt)
 end
 
 function updatePlayer(dt)
+    _player:update(dt)
     _player.x = _speed * _width
 
     local y = (_pos + 1) / 2.0;
@@ -425,9 +448,14 @@ end
 
 function checkCollisions()
     -- cops
-    if (_alive and _player:hitGob(_cops)) then
-        die()
-        silence()
+    if (_alive) then
+        for _, cop in pairs(_cops) do
+            if (_player:hitGob(cop)) then
+                die()
+                silence()
+                break
+            end
+        end
     end
 
     -- cars
@@ -491,14 +519,16 @@ function checkCollisions()
                     table.remove(lane, i)
                 end
             else
-                if (c.x <= _cops:getWorldSpaceBbox().br_x) then
+                local copPosition = _cops[1]:getWorldSpaceBbox().br_x
+
+                if (c.x <= copPosition) then
                     -- Car intersected with police line
                     c.alive = false
                 end
 
                 if (not c.alive and c.visible) then
                     if (c.y < top or c.y > bottom
-                        or c.x <= _cops:getWorldSpaceBbox().br_x) then
+                        or c.x <= copPosition) then
                         -- Explosions!
                         boom()
 
@@ -620,7 +650,10 @@ function drawDebug()
         end
     end
     _player:drawHitbox()
-    _cops:drawHitbox()
+
+    for _, cop in pairs(_cops) do
+        cop:drawHitbox()
+    end
 
     love.graphics.pop()
 end
@@ -702,7 +735,10 @@ function love.draw()
 
     _bg1:draw()
     _bg2:draw()
-    _cops:draw()
+
+    for _, cop in pairs(_cops) do
+        cop:draw()
+    end
 
     -- Cheap-ass depth sort
     local playerDrawn = false
@@ -771,6 +807,7 @@ function love.update(dt)
         updateBg(dt)
         updatePlayer(dt)
         updateCars(dt)
+        updateCops(dt)
         updateExplosions(dt)
         checkCollisions()
     end

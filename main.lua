@@ -46,6 +46,7 @@ local _roadSpeed = 300
 
 local _width = 400
 local _height = 200
+local _scale = 3.0
 
 --
 -- Game entities
@@ -164,6 +165,11 @@ _sounds.engine:setLooping(true)
 _sounds.brokenEngine:setLooping(true)
 _sounds.brokenEngine2:setLooping(true)
 _sounds.brokenEngine3:setLooping(true)
+
+--
+-- Arcade cabinet hacks
+--
+local fb = love.graphics.newCanvas(_width * _scale, _height * _scale)
 
 --
 -- Functions
@@ -730,8 +736,10 @@ function love.load()
 end
 
 function love.draw()
+    love.graphics.setCanvas(fb)
+
     love.graphics.push()
-    love.graphics.scale(3.0, 3.0)
+    love.graphics.scale(_scale, _scale)
 
     _bg1:draw()
     _bg2:draw()
@@ -770,6 +778,13 @@ function love.draw()
 
     drawDebug()
     love.graphics.pop()
+
+    -- Blit to screen
+    love.graphics.setCanvas()
+
+    local scale = love.graphics.getWidth() / fb:getWidth()
+    local y = (love.graphics.getHeight() - fb:getHeight() * scale) / 2
+    love.graphics.draw(fb, 0, y, 0, scale, scale)
 end
 
 function love.update(dt)

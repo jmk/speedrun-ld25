@@ -1,8 +1,8 @@
-## Ludum Dare 25
+## Speedrun: A Ludum Dare 25 Game
 
 Theme: You Are The Villain
 
-**[Download .love archive](https://www.dropbox.com/s/86sxtydu3kys68c/ld25.love?m)** (requires [Love2D](http://www.love2d.org))
+**[Compo entry page](http://www.ludumdare.com/compo/ludum-dare-25/?action=preview&uid=17972)**
 
 This is my first Ludum Dare entry, and it was a blast! Regrettably, I couldn't commit the entire 48 hours to the challenge, so here's my (mostly) complete game.
 

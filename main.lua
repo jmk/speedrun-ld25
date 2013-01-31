@@ -285,7 +285,7 @@ function updateGame(dt)
     local subRate = 0.5
 
     -- Update player speed
-    if (love.keyboard.isDown(" ")) then
+    if (love.keyboard.isDown(" ") or love.keyboard.isDown("right") or love.keyboard.isDown("lctrl") or love.keyboard.isDown("lalt") or love.keyboard.isDown("lshift")) then
         _accel = _accel + (addRate * dt)
         _accel = math.min(1, _accel)
     else
@@ -833,7 +833,7 @@ function love.keypressed(key, unicode)
         love.event.quit()
     elseif (key == "d") then
         _debug = not _debug
-    elseif (key == "return" and not _alive) then
+    elseif ((key == "1" or key == "2" or key == "return") and not _alive) then
         -- XXX game restart hack
         reset()
     end
